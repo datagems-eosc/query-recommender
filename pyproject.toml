@@ -1,6 +1,6 @@
 [project]
-name = "qr-api"
-version = "0.0.1"
+name = "qr_api"
+version = "0.0.3"
 description = "Query Recommender API (WP4)"
 authors = [{ name = "Niccolò Marastoni", email = "niccolo.marastoni@univr.it" }]
 readme = "README.md"
