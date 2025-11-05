@@ -1,8 +1,6 @@
 
-from typing import Any, Optional
+from typing import Any, Optional, List
 from pydantic import BaseModel
-from typing import List, Dict
-
 
 class Location(BaseModel):
     city: str

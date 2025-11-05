@@ -1,8 +1,7 @@
 from fastapi import APIRouter
-from resources.data_models import QueryRequest, QueryResponse, UserProfile
+from qr_api.resources.data_models import QueryRequest, QueryResponse, UserProfile
 import json
 from pathlib import Path
-import os
 
 router = APIRouter()
 

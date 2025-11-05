@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
-from resources.endpoints import router
+from qr_api.resources.endpoints import router
 import uvicorn
 
 app = FastAPI(
