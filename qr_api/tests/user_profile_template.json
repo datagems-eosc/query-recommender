@@ -1,0 +1,34 @@
+{
+  "name": "str",
+  "surname": "str",
+  "age": 0,
+  "email": "str",
+  "affiliation": "str",
+  "location": {
+    "city": "str",
+    "country": "str"
+  },
+  "previous_queries": [
+    "str", 
+    "..."
+  ],
+  "orcid": {
+    "id": "str",
+    "keywords": [
+      "str",
+      "..."
+    ],
+    "publications": [
+      {
+        "title": "str",
+        "doi": "str",
+        "journal": "str",
+        "year": 2022,
+        "authors": [
+          "str",
+          "..."
+        ]
+      }
+    ]
+  }
+}

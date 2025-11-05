@@ -1,6 +1,7 @@
 import os
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+from resources.endpoints import router
 import uvicorn
 
 app = FastAPI(
@@ -13,8 +14,7 @@ app = FastAPI(
     root_path=os.getenv("ROOT_PATH", ""),
 )
 
-dataset_router = APIRouter()
-app.include_router(dataset_router, prefix="/api/v1")
+app.include_router(router, prefix="/api/v1")
 
 
 # Root
@@ -33,7 +33,7 @@ async def api_home():
         "endpoints": {
             "next_query": {
                 "description": "Get the next query given the previous one",
-                "methods": ["GET"],
+                "methods": ["POST"],
                 "url": "/api/v1/next_query",
                 "example_url": "/api/v1/next_query/previous_query",
             },
