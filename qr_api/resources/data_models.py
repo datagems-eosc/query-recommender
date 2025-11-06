@@ -16,7 +16,7 @@ class UserProfile(BaseModel):
     previous_queries: List[str]
 
 class QueryRequest(BaseModel):
-    previous_query: str
+    current_query: str
     context: Optional[Any] = None   # this should probably be a MoMa object, eventually 
 
 class QueryResponse(BaseModel):

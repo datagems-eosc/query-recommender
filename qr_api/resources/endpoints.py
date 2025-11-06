@@ -5,16 +5,16 @@ from pathlib import Path
 
 router = APIRouter()
 
-def generate_next_queries(previous_query: str, context: dict) -> str:
+def generate_next_queries(current_query: str, context: dict) -> str:
     """
     Inputs:
-    previous_query  <- a string that contains the previous NL query submitted by the user
+    current_query  <- a string that contains the current NL query submitted by the user
     context         <- a dictionary (for now) containing:
                         - user_id <- ID of the user submitting the query
                         - results <- not sure yet, possibly a NL summary of the results
 
     Outputs:
-    next_queries    <- a list of next queries (strings) based on the previous query and context
+    next_queries    <- a list of next queries (strings) based on the current query and context
     """
     user_id = context['user_id']
 
@@ -22,7 +22,7 @@ def generate_next_queries(previous_query: str, context: dict) -> str:
     user_profile_file_path = './qr_api/tests/' + user_id + '_profile.json'
     user_profile = load_user_profile_from_json(user_profile_file_path)
     
-    return [previous_query, 'next query']
+    return [current_query, 'next query']
 
 
 def load_user_profile_from_json(file_path: str) -> UserProfile:
@@ -42,5 +42,5 @@ def load_user_profile_from_json(file_path: str) -> UserProfile:
 
 @router.post("/recommend-next-query", response_model=QueryResponse)
 async def recommend_next_query(request: QueryRequest):
-    next_queries = generate_next_queries(request.previous_query, request.context)
+    next_queries = generate_next_queries(request.current_query, request.context)
     return QueryResponse(next_queries=next_queries)
