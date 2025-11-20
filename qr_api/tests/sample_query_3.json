@@ -1,0 +1,9 @@
+{
+  "current_query": "What is there to do in Verona tonight?",
+  "context": {
+    "user_id":"user3",
+    "results": [
+      { "id": 1, "name": "dataset" }
+    ]
+  }
+}

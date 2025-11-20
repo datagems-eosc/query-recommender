@@ -1,0 +1,18 @@
+{
+  "name": "James",
+  "surname": "Turner",
+  "age": 56,
+  "email": "james.turner@datagems.com",
+  "affiliation": "datagems",
+  "location": {
+    "city": "London",
+    "country": "UK"
+  },
+  "previous_queries": [
+    "latest Premier League analytics",
+    "NBA player performance statistics",
+    "machine learning models for football predictions",
+    "best datasets for tennis match analysis",
+    "how to visualize rugby match statistics"
+  ]
+}
