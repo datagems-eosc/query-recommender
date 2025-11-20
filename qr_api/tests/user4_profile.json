@@ -1,0 +1,18 @@
+{
+  "name": "Luca",
+  "surname": "Romano",
+  "age": 21,
+  "email": "luca.romano@example.com",
+  "affiliation": "Student",
+  "location": {
+    "city": "Milan",
+    "country": "Italy"
+  },
+  "previous_queries": [
+    "best techno clubs in Europe",
+    "how to become a nightclub DJ",
+    "top EDM festivals this year",
+    "clubbing outfit ideas",
+    "how to mix electronic music"
+  ]
+}
