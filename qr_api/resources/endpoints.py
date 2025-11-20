@@ -92,7 +92,7 @@ def generate_next_queries(current_query: str, context: dict) -> list[str]:
         print("Error while calling API:", e)
         return None
 
-@router.post("/recommend-next-query", response_model=QueryResponse)
-async def recommend_next_query(request: QueryRequest):
+@router.post("/recommend-next-queries", response_model=QueryResponse)
+async def recommend_next_queries(request: QueryRequest):
     next_queries = generate_next_queries(request.current_query, request.context)
     return QueryResponse(next_queries=next_queries)

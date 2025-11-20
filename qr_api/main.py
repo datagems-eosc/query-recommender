@@ -31,11 +31,11 @@ async def api_home():
     return {
         "message": "API V1 is running",
         "endpoints": {
-            "next_query": {
-                "description": "Get the next query given the previous one",
+            "recommend-next-queries": {
+                "description": "Get the next queries given the previous one",
                 "methods": ["POST"],
-                "url": "/api/v1/next_query",
-                "example_url": "/api/v1/next_query/previous_query",
+                "url": "/api/v1/recommend-next-queries",
+                "example_url": "/api/v1/recommend-next-queries",
             },
         },
     }
