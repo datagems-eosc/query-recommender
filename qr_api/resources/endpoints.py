@@ -21,11 +21,20 @@ def load_user_profile_from_json(file_path: str) -> UserProfile:
 
     return UserProfile(**data)
 
+def check_user_existence(user_id: str) -> bool:
+    user_profile_file_path = build_user_path(user_id)
+    return os.path.exists(user_profile_file_path)
+
+def build_user_path(user_id:str) -> str:
+    return user_profiles_path + user_id + '_profile.json'
+
 def get_user_previous_queries(context: dict) -> str:
-    user_id = context['user_id']
+    user_id = 'user1'
+    if 'user_id' in context and check_user_existence(context['user_id']):
+        user_id = context['user_id']
 
     #all of this is instantly obsolete when we integrate with WP5
-    user_profile_file_path =  user_profiles_path + user_id + '_profile.json'
+    user_profile_file_path =  build_user_path(user_id)
     user_profile = load_user_profile_from_json(user_profile_file_path)
     previous_queries =  user_profile.previous_queries
     return '|'.join(previous_queries)
@@ -42,6 +51,11 @@ def generate_next_queries(current_query: str, context: dict) -> list[str]:
     next_queries    <- a list of next queries (strings) based on the current query and context
     """
     #this should get the user keywords (we need a function to build those)
+    #context could be null
+    if not context:
+        #default user 
+        context = {'user_id':'user1'}
+
     previous_queries = get_user_previous_queries(context)
 
     payload = {
