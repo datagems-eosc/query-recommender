@@ -96,6 +96,10 @@ def generate_next_queries(current_query: str, context: dict) -> list[str]:
     try:
         response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json_data, verify=False)
         response.raise_for_status()
+
+        #TODO should check if new recommendations are not in query log, to avoid loops
+        #easy: equivalence (not very good)
+        #harder: token similarity (X% of same tokens as one of previous suggestions)
         res = response.json()['choices'][0]['message']['content']
         
         #TODO this assumes the LLM replies with the right format, consistently
