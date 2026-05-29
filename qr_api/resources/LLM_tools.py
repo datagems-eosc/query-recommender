@@ -9,7 +9,7 @@ HEADERS = {
 "Content-Type": "application/json"
 }
 
-def generate_next_queries(current_query: str, context: dict, model_choice: str = "llama-4-maverick") -> list[str]:
+def generate_next_queries(current_query: str, context: dict, model_choice: str = "llama-3.3") -> list[str]:
     """
     Inputs:
     current_query   <- a string that contains the current NL query submitted by the user
@@ -74,7 +74,7 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
         return None
     
 
-def generate_user_description(context: dict, model_choice: str = "llama-4-maverick") -> str:
+def generate_user_description(context: dict, model_choice: str = "llama-3.3") -> str:
     previous_queries = get_user_previous_queries(context)
     payload = {
             "model": model_choice,
