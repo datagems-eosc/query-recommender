@@ -1,5 +1,5 @@
 import json, requests, os
-from qr_api.resources.user_tools import get_user_previous_queries
+from qr_api.resources.user_tools import get_user_keywords
 
 TOKEN = os.getenv('LLM_TOKEN', '')
 LLM_API_URL = os.getenv('LLM_API_URL', '')
@@ -20,13 +20,8 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
     Outputs:
     next_queries    <- a list of next queries (strings) based on the current query and context
     """
-    #this should get the user keywords (we need a function to build those)
-    #context could be null
-    if not context:
-        #default user 
-        context = {'user_id':'user1'}
-
-    previous_queries = get_user_previous_queries(context)
+    keywords = get_user_keywords(context)
+    keywords_str = ', '.join(keywords) if keywords else 'none'
 
     payload = {
             "model": model_choice,
@@ -34,21 +29,19 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
                 {
                     "role":"system",
                     "content": '''
-                    You are an AI assistant whose primary goal is to suggest the next search queries, 
-                    in order to help a user search and find information better on a search engine. 
+                    You are an AI assistant whose primary goal is to suggest the next search queries,
+                    in order to help a user search and find information better on a search engine.
                     You are going to suggest 3 search queries that the user would search next based on the current query
-                    and the user's previous queries. These previous queries should indicate the user's preferences.
-                    Two different queries are separated by the token '|'. 
-                    For example,'Microsoft' and 'Google' would appear as 'Microsoft' | 'Google'.
-                    Only suggest a list of the next 3 (maximum) queries, in the format: ['query1', 'query2', 'query3']. 
-                    Make them short (close to the previous queries). Do not repeat or summarize the current query.
+                    and the user's interest keywords. These keywords should indicate the user's preferences.
+                    Only suggest a list of the next 3 (maximum) queries, in the format: ['query1', 'query2', 'query3'].
+                    Make them short (close to the current query). Do not repeat or summarize the current query.
                     '''
-    
+
                 },
                 {
                     "role":"user",
                     "content":f'''Current query: {current_query}
-                                  Previous queries: {previous_queries}'''
+                                  User interest keywords: {keywords_str}'''
                 }
             ]
         }
@@ -75,22 +68,22 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
     
 
 def generate_user_description(context: dict, model_choice: str = "llama-3.3") -> str:
-    previous_queries = get_user_previous_queries(context)
+    keywords = get_user_keywords(context)
+    keywords_str = ', '.join(keywords) if keywords else 'none'
     payload = {
             "model": model_choice,
             "messages": [
                 {
                     "role":"system",
                     "content": '''You are an AI assistant whose primary goal is to provide the summary of a user profile.
-                    The user profile is defined by the previous queries that the user performed in a data analytics app.
-                    Two different queries and entities are separated by the token '|'. For example,'Microsoft' and 'Google' would appear as 'Microsoft' | 'Google'.
-                    Provide a brief description of this user based on their queries.
+                    The user profile is defined by the user's interest keywords, extracted from queries performed in a data analytics app.
+                    Provide a brief description of this user based on their keywords.
                     '''
-    
+
                 },
                 {
                     "role":"user",
-                    "content":f'''User's previous queries: {previous_queries}'''
+                    "content":f'''User's interest keywords: {keywords_str}'''
                 }
             ]
         }

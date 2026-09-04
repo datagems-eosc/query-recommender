@@ -1,39 +1,32 @@
+import os
+import requests
 
-from pathlib import Path
-import json, requests, os
-from qr_api.resources.data_models import UserProfile
+USER_PROFILER_API_URL = os.getenv("USER_PROFILER_API_URL", "http://localhost:8000")
 
-user_profiles_path = './qr_api/tests/'
 
-def load_user_profile_from_json(file_path: str) -> UserProfile:
+def fetch_user_interest_profile(user_id: str | None) -> dict:
     """
-    Loads a user profile from a JSON file and returns a UserProfile object.
-    This whole function will be gone once we integrate with WP5.
+    Fetch the portable interest profile for a user from the User Profiler API.
+    Degrades to an anonymous/empty profile on any failure - missing user_id,
+    network error, or unknown user - so callers never need to handle errors.
     """
-    file = Path(file_path)
-    if not file.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
-    
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    empty = {"userId": user_id, "keywords": [], "location": None, "affiliation": None, "orcid": None}
+    if not user_id:
+        return empty
 
-    return UserProfile(**data)
+    try:
+        response = requests.get(f"{USER_PROFILER_API_URL}/user/{user_id}/profile", timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        if "keywords" not in data:
+            # User Profiler's "no such user" convention: HTTP 200 + {"message": ...}
+            return empty
+        return data
+    except requests.exceptions.RequestException as e:
+        print("Error while calling User Profiler API:", e)
+        return empty
 
-def check_user_existence(user_id: str) -> bool:
-    user_profile_file_path = build_user_path(user_id)
-    return os.path.exists(user_profile_file_path)
 
-def build_user_path(user_id:str) -> str:
-    return user_profiles_path + user_id + '_profile.json'
-
-def get_user_previous_queries(context: dict) -> str:
-    user_id = 'user1'
-    if 'user_id' in context and check_user_existence(context['user_id']):
-        user_id = context['user_id']
-
-    #all of this is instantly obsolete when we integrate with WP5
-    user_profile_file_path =  build_user_path(user_id)
-    user_profile = load_user_profile_from_json(user_profile_file_path)
-    previous_queries =  user_profile.previous_queries
-    return '|'.join(previous_queries)
-
+def get_user_keywords(context: dict | None) -> list[str]:
+    user_id = (context or {}).get("user_id")
+    return fetch_user_interest_profile(user_id).get("keywords") or []
