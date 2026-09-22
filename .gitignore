@@ -142,3 +142,7 @@ cython_debug/
 
 dmm_api/data/results
 tests/deliverable
+
+
+# MacOS preferences
+.DS_Store
