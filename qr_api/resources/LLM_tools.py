@@ -1,4 +1,5 @@
 import json, requests, os
+from urllib.parse import urlsplit
 from qr_api.resources.user_tools import get_user_keywords
 
 TOKEN = os.getenv('LLM_TOKEN', '')
@@ -70,7 +71,7 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
         return None
     
 
-def generate_user_description(context: dict, model_choice: str = "llama-3.3") -> str:
+def generate_user_description(context: dict, model_choice: str = "glm-5.3-flash") -> str:
     keywords = get_user_keywords(context)
     keywords_str = ', '.join(keywords) if keywords else 'none'
 
@@ -122,9 +123,9 @@ def get_available_models(model_choice) -> str:
         - ID of the available model: either the first available or the one selected
     '''
 
-    api = 'api/models'
-    ip, port, _ = str(LLM_API_URL).partition('32443/') 
-    url = ip + port + api
+    # models endpoint lives at <scheme>://<host[:port]>/api/models, whatever the chat path is
+    parts = urlsplit(LLM_API_URL)
+    url = f"{parts.scheme}://{parts.netloc}/api/models"
 
     try:
         response = requests.get(
@@ -142,4 +143,4 @@ def get_available_models(model_choice) -> str:
         
     except requests.exceptions.RequestException as e:
         print(f"Could not reach models endpoint: {e}")
-        return []
+        return model_choice
