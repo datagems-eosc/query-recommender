@@ -14,6 +14,26 @@ API_ENDPOINTS = {
     "Remote (dev)": "https://datagems-dev.scayle.es/qr/api/v1",
 }
 
+PROFILER_ENDPOINTS = {
+    "Local": os.getenv("USER_PROFILER_API_URL", "http://localhost:8000"),
+    "Remote (dev)": "https://datagems-dev.scayle.es/up",
+}
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def list_users(profiler_url: str) -> list[dict]:
+    r = requests.get(f"{profiler_url}/users", timeout=5)
+    r.raise_for_status()
+    return r.json()["users"]
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def get_user_keywords(profiler_url: str, user_id: str) -> list[str]:
+    r = requests.get(f"{profiler_url}/user/{user_id}/profile", timeout=5)
+    r.raise_for_status()
+    return r.json().get("keywords", [])
+
+
 st.set_page_config(page_title="Query Recommender", page_icon="💬")
 
 if "messages" not in st.session_state:
@@ -31,11 +51,43 @@ with st.sidebar:
         api_url = API_ENDPOINTS[api_choice]
         st.caption(f"`{api_url}`")
     api_url = api_url.rstrip("/")
-    user_id = st.text_input(
-        "User ID (optional)",
-        value="user1",
-        help="Sent in the request context so recommendations can use the user's profile.",
-    )
+
+    st.subheader("User")
+    profiler_choice = st.radio("User Profiler", list(PROFILER_ENDPOINTS), horizontal=True)
+    profiler_url = PROFILER_ENDPOINTS[profiler_choice].rstrip("/")
+    st.caption(f"`{profiler_url}`")
+
+    try:
+        users = list_users(profiler_url)
+    except Exception as e:
+        users = None
+        st.warning(f"Could not load users from the User Profiler: {e}")
+
+    if users is None:
+        # Profiler unreachable: fall back to typing an ID by hand
+        user_id = st.text_input("User ID (optional)")
+    else:
+        options = [None] + [u["userId"] for u in users]
+        names = {u["userId"]: f"{u['name']} {u['surname']}" for u in users}
+        user_id = st.selectbox(
+            "User",
+            options,
+            format_func=lambda uid: "Anonymous" if uid is None else names[uid],
+            help="Sent in the request context so recommendations can use the user's profile.",
+        )
+
+    if user_id:
+        try:
+            keywords = get_user_keywords(profiler_url, user_id)
+            if keywords:
+                st.markdown("**Interest keywords**")
+                st.markdown(" ".join(f"`{k}`" for k in keywords))
+            else:
+                st.caption("This user has no keywords yet.")
+        except Exception as e:
+            st.caption(f"Could not load keywords: {e}")
+
+    st.divider()
     timeout = st.number_input("Timeout (s)", min_value=5, max_value=300, value=60)
 
     if st.button("Check API status"):

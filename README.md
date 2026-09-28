@@ -27,4 +27,4 @@ In the sidebar you can choose which API to use:
 | Remote (dev) | `https://datagems-dev.scayle.es/qr/api/v1` |
 | Custom | any base URL you enter |
 
-To use the local option, start the API first with `python -m qr_api.main` (it listens on port 5000). The sidebar also has an optional user ID, sent as `context.user_id`, a request timeout, an API status check and a button to clear the chat.
+To use the local option, start the API first with `python -m qr_api.main` (it listens on port 5000). The sidebar also lets you pick a user from the User Profiler (local `http://localhost:8000`, overridable with `USER_PROFILER_API_URL`, or the remote dev instance). The selected user's interest keywords are shown, and their ID is sent as `context.user_id`. If the User Profiler is unreachable you can type a user ID by hand. There is also a request timeout, an API status check and a button to clear the chat.
