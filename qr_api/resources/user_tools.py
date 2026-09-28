@@ -16,12 +16,11 @@ def fetch_user_interest_profile(user_id: str | None) -> dict:
 
     try:
         response = requests.get(f"{USER_PROFILER_API_URL}/user/{user_id}/profile", timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        if "keywords" not in data:
-            # User Profiler's "no such user" convention: HTTP 200 + {"message": ...}
+        if response.status_code == 404:
+            # Unknown user: not an error, just no profile to personalise with
             return empty
-        return data
+        response.raise_for_status()
+        return response.json()
     except requests.exceptions.RequestException as e:
         print("Error while calling User Profiler API:", e)
         return empty
