@@ -6,9 +6,36 @@ The documentation is available at: [https://datagems-eosc.github.io/query-recomm
 |---|---|
 | `LLM_TOKEN` | Bearer token for the LLM API |
 | `LLM_API_URL` | Full URL of the LLM chat completions endpoint |
+| `LLM_SSL_VERIFY` | TLS certificate verification for the LLM API. `true` (default) uses the system CAs, a file path uses that CA bundle or certificate, `false` disables verification (e.g. for an endpoint with a self-signed certificate). |
 | `USER_PROFILER_API_URL` | Base URL of the User Profiler API, used to fetch a user's interest keywords for recommendations. Defaults to `http://localhost:8000`. In the cluster this is `http://user-profiler-service:5000` (namespace `univr`). |
 
 If `USER_PROFILER_API_URL` is unreachable, or the given `user_id` doesn't exist, recommendations are generated with an empty keyword set instead of failing.
+
+## Running locally
+
+Set the environment variables **before** starting the API: they are read once at startup.
+
+The internal LLM endpoint (`https://172.16.59.5:32443`) uses a self-signed certificate, so with the default `LLM_SSL_VERIFY=true` every LLM call fails with `CERTIFICATE_VERIFY_FAILED`. Either trust that certificate (recommended) or disable verification:
+
+```bash
+# bash: save the endpoint's certificate once and verify against it (recommended)
+openssl s_client -connect 172.16.59.5:32443 </dev/null 2>/dev/null | openssl x509 > scayle-llm.pem
+export LLM_SSL_VERIFY="$PWD/scayle-llm.pem"      # or: export LLM_SSL_VERIFY=false
+
+export LLM_TOKEN="your-token"
+export LLM_API_URL="https://172.16.59.5:32443/api/chat/completions"
+python -m qr_api.main
+```
+
+```powershell
+# PowerShell
+$env:LLM_SSL_VERIFY = "C:\path\to\scayle-llm.pem"   # or: $env:LLM_SSL_VERIFY = "false"
+$env:LLM_TOKEN = "your-token"
+$env:LLM_API_URL = "https://172.16.59.5:32443/api/chat/completions"
+python -m qr_api.main
+```
+
+With `false`, the API prints `WARNING: TLS certificate verification for the LLM API is disabled` at startup. In Kubernetes the LLM is reached as `https://chat.scayle.es`, which only resolves inside the cluster. The deployment currently sets `LLM_SSL_VERIFY=false` as a precaution. It can be removed once that host's certificate is confirmed to verify from inside the pod.
 
 ## Streamlit demo
 

@@ -1,5 +1,6 @@
 import json, requests, os
 from urllib.parse import urlsplit
+import urllib3
 from pydantic import ValidationError
 from qr_api.resources.data_models import LLMQuerySuggestions
 from qr_api.resources.user_tools import get_user_keywords
@@ -23,6 +24,25 @@ HEADERS = {
 "Authorization": "Bearer " + TOKEN,
 "Content-Type": "application/json"
 }
+
+
+def _ssl_verify_setting() -> bool | str:
+    """
+    Reads LLM_SSL_VERIFY: "true" (default) verifies against the system CAs,
+    a file path verifies against that CA bundle / certificate, and "false"
+    disables verification (e.g. for an endpoint with a self-signed certificate).
+    """
+    value = os.getenv('LLM_SSL_VERIFY', 'true').strip()
+    if value.lower() in ('false', '0', 'no'):
+        # Explicit opt-out: warn once here instead of on every request
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        print("WARNING: TLS certificate verification for the LLM API is disabled (LLM_SSL_VERIFY=false)")
+        return False
+    if value.lower() in ('true', '1', 'yes', ''):
+        return True
+    return value
+
+SSL_VERIFY = _ssl_verify_setting()
 
 def generate_next_queries(current_query: str, context: dict, model_choice: str = "llama-3.3") -> list[str]:
     """
@@ -69,11 +89,11 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
 
     #send POST request to the FastAPI endpoint
     try:
-        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=False)
+        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=SSL_VERIFY)
         if response.status_code == 400:
             # Some backends/models reject response_format: retry relying on the prompt alone
             del payload["response_format"]
-            response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=False)
+            response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=SSL_VERIFY)
         response.raise_for_status()
 
         #TODO should check if new recommendations are not in query log, to avoid loops
@@ -146,7 +166,7 @@ def generate_user_description(context: dict, model_choice: str = "glm-5.3-flash"
     #print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
     # Send POST request to the FastAPI endpoint
     try:
-        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json_data, verify=False)
+        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json_data, verify=SSL_VERIFY)
         response.raise_for_status()
         res = response.json()['choices'][0]['message']['content']
         return res
@@ -177,7 +197,7 @@ def get_available_models(model_choice) -> str:
         response = requests.get(
         url,
         headers= HEADERS,
-        verify=False,
+        verify=SSL_VERIFY,
         timeout=30,
         )
         response.raise_for_status()
