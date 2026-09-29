@@ -6,6 +6,8 @@ from qr_api.resources.data_models import LLMQuerySuggestions
 from qr_api.resources.user_tools import get_user_keywords
 
 MAX_SUGGESTIONS = 3
+# The User Profiler returns keywords strongest (most recently seen) first: keep the top ones
+MAX_KEYWORDS = 15
 
 # Asks OpenAI-compatible backends to constrain the reply to this schema
 SUGGESTIONS_RESPONSE_FORMAT = {
@@ -56,7 +58,7 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
     next_queries    <- a list of next queries (strings) based on the current query and context,
                        or None if the LLM could not be reached or replied with invalid output
     """
-    keywords = get_user_keywords(context)
+    keywords = get_user_keywords(context)[:MAX_KEYWORDS]
     keywords_str = ', '.join(keywords) if keywords else 'none'
 
     # getting the model among those available
@@ -72,6 +74,7 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
                     in order to help a user search and find information better on a search engine.
                     You are going to suggest 3 search queries that the user would search next based on the current query
                     and the user's interest keywords. These keywords should indicate the user's preferences.
+                    The keywords are listed from most to least relevant: favour the first ones.
                     Make them short (close to the current query). Do not repeat or summarize the current query.
                     Reply ONLY with a JSON object of this exact form, with no other text:
                     {"queries": ["query1", "query2", "query3"]}
@@ -81,7 +84,7 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
                 {
                     "role":"user",
                     "content":f'''Current query: {current_query}
-                                  User interest keywords: {keywords_str}'''
+                                  User interest keywords (most relevant first): {keywords_str}'''
                 }
             ],
             "response_format": SUGGESTIONS_RESPONSE_FORMAT,
