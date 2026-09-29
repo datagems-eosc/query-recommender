@@ -1,6 +1,20 @@
 import json, requests, os
 from urllib.parse import urlsplit
+from pydantic import ValidationError
+from qr_api.resources.data_models import LLMQuerySuggestions
 from qr_api.resources.user_tools import get_user_keywords
+
+MAX_SUGGESTIONS = 3
+
+# Asks OpenAI-compatible backends to constrain the reply to this schema
+SUGGESTIONS_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "query_suggestions",
+        "strict": True,
+        "schema": LLMQuerySuggestions.model_json_schema() | {"additionalProperties": False},
+    },
+}
 
 TOKEN = os.getenv('LLM_TOKEN', '')
 LLM_API_URL = os.getenv('LLM_API_URL', '')
@@ -19,7 +33,8 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
                         - results <- possibly a NL summary of the query results
 
     Outputs:
-    next_queries    <- a list of next queries (strings) based on the current query and context
+    next_queries    <- a list of next queries (strings) based on the current query and context,
+                       or None if the LLM could not be reached or replied with invalid output
     """
     keywords = get_user_keywords(context)
     keywords_str = ', '.join(keywords) if keywords else 'none'
@@ -37,8 +52,9 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
                     in order to help a user search and find information better on a search engine.
                     You are going to suggest 3 search queries that the user would search next based on the current query
                     and the user's interest keywords. These keywords should indicate the user's preferences.
-                    Only suggest a list of the next 3 (maximum) queries, in the format: ['query1', 'query2', 'query3'].
                     Make them short (close to the current query). Do not repeat or summarize the current query.
+                    Reply ONLY with a JSON object of this exact form, with no other text:
+                    {"queries": ["query1", "query2", "query3"]}
                     '''
 
                 },
@@ -47,28 +63,58 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
                     "content":f'''Current query: {current_query}
                                   User interest keywords: {keywords_str}'''
                 }
-            ]
+            ],
+            "response_format": SUGGESTIONS_RESPONSE_FORMAT,
         }
-        
-    json_data = json.dumps(payload).encode('utf8')
-    
+
     #send POST request to the FastAPI endpoint
     try:
-        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json_data, verify=False)
+        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=False)
+        if response.status_code == 400:
+            # Some backends/models reject response_format: retry relying on the prompt alone
+            del payload["response_format"]
+            response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=False)
         response.raise_for_status()
 
         #TODO should check if new recommendations are not in query log, to avoid loops
         #easy: equivalence (not very good)
         #harder: token similarity (X% of same tokens as one of previous suggestions)
-        res = response.json()['choices'][0]['message']['content']
-        
-        #TODO this assumes the LLM replies with the right format, consistently
-        res = res.replace('[', '').replace(']', '').replace("'", '').split(',')
-        return res
-    
+        content = response.json()['choices'][0]['message']['content']
+
     except requests.exceptions.RequestException as e:
         print("Error while calling API:", e)
         return None
+
+    return parse_suggestions(content, current_query)
+
+
+def parse_suggestions(content: str, current_query: str) -> list[str] | None:
+    """
+    Validates the LLM reply against LLMQuerySuggestions and cleans the queries:
+    strips whitespace, drops empty ones, duplicates and repeats of the current query,
+    and keeps at most MAX_SUGGESTIONS. Returns None if the reply is not valid JSON
+    of the expected shape.
+    """
+    # Tolerate replies wrapped in ```json fences or surrounded by extra text
+    start, end = content.find('{'), content.rfind('}')
+    if start == -1 or end == -1:
+        print("LLM reply contains no JSON object:", content)
+        return None
+
+    try:
+        suggestions = LLMQuerySuggestions.model_validate_json(content[start:end + 1])
+    except ValidationError as e:
+        print("LLM reply does not match the expected schema:", e)
+        return None
+
+    seen = {current_query.strip().lower()}
+    queries = []
+    for q in suggestions.queries:
+        q = q.strip()
+        if q and q.lower() not in seen:
+            seen.add(q.lower())
+            queries.append(q)
+    return queries[:MAX_SUGGESTIONS]
     
 
 def generate_user_description(context: dict, model_choice: str = "glm-5.3-flash") -> str:

@@ -8,3 +8,7 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     next_queries: list[str]
+
+class LLMQuerySuggestions(BaseModel):
+    """Shape the LLM is asked to reply with: {"queries": ["...", "...", "..."]}"""
+    queries: list[str]
