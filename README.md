@@ -35,7 +35,7 @@ $env:LLM_API_URL = "https://172.16.59.5:32443/api/chat/completions"
 python -m qr_api.main
 ```
 
-With `false`, the API prints `WARNING: TLS certificate verification for the LLM API is disabled` at startup. In Kubernetes the LLM is reached as `https://chat.scayle.es`, which only resolves inside the cluster. The deployment currently sets `LLM_SSL_VERIFY=false` as a precaution. It can be removed once that host's certificate is confirmed to verify from inside the pod.
+With `false`, the API prints `WARNING: TLS certificate verification for the LLM API is disabled` at startup. In Kubernetes the LLM is reached as `https://chat.scayle.es`, which only resolves inside the cluster and serves a publicly trusted certificate for that name, so the deployment uses the default `LLM_SSL_VERIFY=true`.
 
 ## Streamlit demo
 
