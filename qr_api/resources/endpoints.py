@@ -11,7 +11,7 @@ router = APIRouter()
 async def recommend_next_queries(
     request: QueryRequest,
     token: str = Depends(security.oauth2_scheme),
-    token_payload: dict[str, Any] = Depends(security.require_valid_token),
+    token_payload: dict[str, Any] = Depends(security.require_app_scope),
 ):
     # The caller's token is passed on to the User Profiler (never to the LLM)
     next_queries = generate_next_queries(request.current_query, request.context, token=token)

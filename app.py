@@ -4,7 +4,10 @@ Run with:
     streamlit run app.py
 """
 
+import base64
+import json
 import os
+import time
 
 import requests
 import streamlit as st
@@ -20,16 +23,31 @@ PROFILER_ENDPOINTS = {
 }
 
 
+def auth_headers(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+def token_expiry_note(token: str) -> str | None:
+    """Warn about an expired / malformed token (claims decoded for display only, the APIs verify it)."""
+    try:
+        payload = token.split(".")[1]
+        exp = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))["exp"]
+    except (IndexError, ValueError, KeyError, TypeError):
+        return "This doesn't look like a Keycloak token."
+    left = int(exp - time.time())
+    return f"Token expired {-left // 60} min ago: get a new one." if left <= 0 else None
+
+
 @st.cache_data(ttl=30, show_spinner=False)
-def list_users(profiler_url: str) -> list[dict]:
-    r = requests.get(f"{profiler_url}/users", timeout=5)
+def list_users(profiler_url: str, token: str) -> list[dict]:
+    r = requests.get(f"{profiler_url}/users", headers=auth_headers(token), timeout=5)
     r.raise_for_status()
     return r.json()["users"]
 
 
 @st.cache_data(ttl=30, show_spinner=False)
-def get_user_keywords(profiler_url: str, user_id: str) -> list[str]:
-    r = requests.get(f"{profiler_url}/user/{user_id}/profile", timeout=5)
+def get_user_keywords(profiler_url: str, user_id: str, token: str) -> list[str]:
+    r = requests.get(f"{profiler_url}/user/{user_id}/profile", headers=auth_headers(token), timeout=5)
     r.raise_for_status()
     return r.json().get("keywords", [])
 
@@ -52,13 +70,25 @@ with st.sidebar:
         st.caption(f"`{api_url}`")
     api_url = api_url.rstrip("/")
 
+    token = st.text_input(
+        "Keycloak token",
+        value=os.getenv("DATAGEMS_TOKEN", ""),
+        type="password",
+        help="Sent as `Authorization: Bearer <token>` to both APIs. Get one from the "
+             "'Keycloak token' tab of DataGEMS_LLM_credentials_info.",
+    ).strip().removeprefix("Bearer ").strip()
+    if not token:
+        st.warning("No token: the APIs will answer 401.")
+    elif note := token_expiry_note(token):
+        st.warning(note)
+
     st.subheader("User")
     profiler_choice = st.radio("User Profiler", list(PROFILER_ENDPOINTS), horizontal=True)
     profiler_url = PROFILER_ENDPOINTS[profiler_choice].rstrip("/")
     st.caption(f"`{profiler_url}`")
 
     try:
-        users = list_users(profiler_url)
+        users = list_users(profiler_url, token)
     except Exception as e:
         users = None
         st.warning(f"Could not load users from the User Profiler: {e}")
@@ -78,7 +108,7 @@ with st.sidebar:
 
     if user_id:
         try:
-            keywords = get_user_keywords(profiler_url, user_id)
+            keywords = get_user_keywords(profiler_url, user_id, token)
             if keywords:
                 st.markdown("**Interest keywords**")
                 st.markdown(" ".join(f"`{k}`" for k in keywords))
@@ -109,6 +139,7 @@ def recommend(query: str) -> list[str]:
     r = requests.post(
         f"{api_url}/recommend-next-queries",
         json={"current_query": query, "context": context},
+        headers=auth_headers(token),
         timeout=timeout,
     )
     r.raise_for_status()

@@ -2,9 +2,8 @@
 Bearer-token authentication against the DataGEMS Keycloak realm.
 
 Adapted from data-model-management's dmm_api/resources/security.py: tokens are
-verified with the realm's public keys (JWKS). The query recommender has no
-Keycloak client of its own yet, so the audience is not checked here; the token
-is forwarded as-is to the User Profiler, which does check it.
+verified with the realm's public keys (JWKS), then the audience is checked
+against this API's client ID. The token is forwarded as-is to the User Profiler.
 """
 import logging
 import os
@@ -23,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr
 
 logger = logging.getLogger(__name__)
 
+OIDC_CLIENT_ID: str = os.getenv("OIDC_CLIENT_ID", "query-recommender")
 OIDC_ISSUER_URL: str = os.getenv(
     "OIDC_ISSUER_URL", "https://datagems-dev.scayle.es/oauth/realms/dev"
 )
@@ -75,6 +75,7 @@ async def require_valid_token(
     """FastAPI dependency: checks `Authorization: Bearer <token>` for a valid signature,
     issuer and expiry, and returns the decoded claims.
     Raises 401 for a missing/invalid token, 503 if the public keys cannot be fetched.
+    The audience is checked separately by require_app_scope.
     """
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
@@ -105,12 +106,29 @@ async def require_valid_token(
     return payload
 
 
+async def require_app_scope(
+    token_payload: dict[str, Any] = Depends(require_valid_token),
+) -> dict[str, Any]:
+    """FastAPI dependency: on top of require_valid_token, checks that OIDC_CLIENT_ID
+    is in the token's audience (`aud` can be a string or a list). Raises 403 otherwise."""
+    aud = token_payload.get("aud", [])
+    audiences = aud if isinstance(aud, list) else [aud] if aud else []
+
+    if OIDC_CLIENT_ID not in audiences:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Token missing required audience: {OIDC_CLIENT_ID}",
+        )
+
+    return token_payload
+
+
 @router.post("/authtest", summary="Check that a bearer token is accepted by this API")
 async def authtest(
     payload: AuthTestRequest,
-    token_payload: dict[str, Any] = Depends(require_valid_token),
+    token_payload: dict[str, Any] = Depends(require_app_scope),
 ):
-    """Validate caller token and echo minimal identity + request payload."""
+    """Validate caller token (signature, issuer and audience) and echo minimal identity + request payload."""
     return {
         "authorized": True,
         "message": "Token is valid",
