@@ -46,19 +46,20 @@ def _ssl_verify_setting() -> bool | str:
 
 SSL_VERIFY = _ssl_verify_setting()
 
-def generate_next_queries(current_query: str, context: dict, model_choice: str = "llama-3.3") -> list[str]:
+def generate_next_queries(current_query: str, context: dict, model_choice: str = "llama-3.3", token: str | None = None) -> list[str]:
     """
     Inputs:
     current_query   <- a string that contains the current NL query submitted by the user
     context         <- a dictionary (for now) containing:
                         - user_id <- ID of the user submitting the query
                         - results <- possibly a NL summary of the query results
+    token           <- the caller's bearer token, forwarded to the User Profiler
 
     Outputs:
     next_queries    <- a list of next queries (strings) based on the current query and context,
                        or None if the LLM could not be reached or replied with invalid output
     """
-    keywords = get_user_keywords(context)[:MAX_KEYWORDS]
+    keywords = get_user_keywords(context, token)[:MAX_KEYWORDS]
     keywords_str = ', '.join(keywords) if keywords else 'none'
 
     # getting the model among those available

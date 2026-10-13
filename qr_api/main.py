@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from qr_api.resources.endpoints import router
+from qr_api.resources.security import router as security_router
 import uvicorn
 
 app = FastAPI(
@@ -15,6 +16,7 @@ app = FastAPI(
 )
 
 app.include_router(router, prefix="/api/v1")
+app.include_router(security_router, prefix="/api/v1")
 
 
 # Root
@@ -36,6 +38,11 @@ async def api_home():
                 "methods": ["POST"],
                 "url": "/api/v1/recommend-next-queries",
                 "example_url": "/api/v1/recommend-next-queries",
+            },
+            "authtest": {
+                "description": "Test endpoint requiring a valid bearer token",
+                "methods": ["POST"],
+                "url": "/api/v1/authtest",
             },
         },
     }
