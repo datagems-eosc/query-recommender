@@ -19,13 +19,23 @@ SUGGESTIONS_RESPONSE_FORMAT = {
     },
 }
 
+
+# =========================
+# LLM API CONFIGURATION
+
+# LLM Token
 TOKEN = os.getenv('LLM_TOKEN', '')
+# LLM API URL
 LLM_API_URL = os.getenv('LLM_API_URL', '')
+# LLM Model List URL
+LLM_MODEL_LIST = os.getenv('LLM_MODEL_LIST', '')
+
 HEADERS = {
 "User-Agent": "Python API Sample",
 "Authorization": "Bearer " + TOKEN,
 "Content-Type": "application/json"
 }
+# ========================
 
 
 def _ssl_verify_setting() -> bool | str:
