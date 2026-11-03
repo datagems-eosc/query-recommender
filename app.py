@@ -75,7 +75,7 @@ with st.sidebar:
         value=os.getenv("DATAGEMS_TOKEN", ""),
         type="password",
         help="Sent as `Authorization: Bearer <token>` to both APIs. Get one from the "
-             "'Keycloak token' tab of DataGEMS_LLM_credentials_info.",
+             "DataGEMS AAI (Keycloak).",
     ).strip().removeprefix("Bearer ").strip()
     if not token:
         st.warning("No token: the APIs will answer 401.")

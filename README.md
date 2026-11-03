@@ -15,23 +15,23 @@ If `USER_PROFILER_API_URL` is unreachable, or the given `user_id` doesn't exist,
 
 Set the environment variables **before** starting the API: they are read once at startup.
 
-The internal LLM endpoint (`https://172.16.59.5:32443`) uses a self-signed certificate, so with the default `LLM_SSL_VERIFY=true` every LLM call fails with `CERTIFICATE_VERIFY_FAILED`. Either trust that certificate (recommended) or disable verification:
+If the LLM endpoint you reach locally uses a self-signed certificate, then with the default `LLM_SSL_VERIFY=true` every LLM call fails with `CERTIFICATE_VERIFY_FAILED`. Either trust that certificate (recommended) or disable verification:
 
 ```bash
 # bash: save the endpoint's certificate once and verify against it (recommended)
-openssl s_client -connect 172.16.59.5:32443 </dev/null 2>/dev/null | openssl x509 > scayle-llm.pem
-export LLM_SSL_VERIFY="$PWD/scayle-llm.pem"      # or: export LLM_SSL_VERIFY=false
+openssl s_client -connect <llm-host>:<port> </dev/null 2>/dev/null | openssl x509 > llm.pem
+export LLM_SSL_VERIFY="$PWD/llm.pem"      # or: export LLM_SSL_VERIFY=false
 
 export LLM_TOKEN="your-token"
-export LLM_API_URL="https://172.16.59.5:32443/api/chat/completions"
+export LLM_API_URL="https://<llm-host>:<port>/api/chat/completions"
 python -m qr_api.main
 ```
 
 ```powershell
 # PowerShell
-$env:LLM_SSL_VERIFY = "C:\path\to\scayle-llm.pem"   # or: $env:LLM_SSL_VERIFY = "false"
+$env:LLM_SSL_VERIFY = "C:\path\to\llm.pem"   # or: $env:LLM_SSL_VERIFY = "false"
 $env:LLM_TOKEN = "your-token"
-$env:LLM_API_URL = "https://172.16.59.5:32443/api/chat/completions"
+$env:LLM_API_URL = "https://<llm-host>:<port>/api/chat/completions"
 python -m qr_api.main
 ```
 
