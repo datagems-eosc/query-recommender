@@ -35,3 +35,23 @@ def fetch_user_interest_profile(user_id: str | None, token: str | None = None) -
 def get_user_keywords(context: dict | None, token: str | None = None) -> list[str]:
     user_id = (context or {}).get("user_id")
     return fetch_user_interest_profile(user_id, token).get("keywords") or []
+
+
+
+#=================================
+# Notification of user's query
+
+def notify_query(user_id: str | None, query: str, token: str | None) -> None:
+    '''
+    Tells the User Profiler about the new query
+        --> triggers UP keywords refresh in background
+    '''
+    if not user_id or not token:
+        return
+    try:
+        r = requests.post(f"{USER_PROFILER_API_URL}/user/{user_id}/queries", json={"query": query},
+                          headers={"Authorization": f"Bearer {token}"}, timeout=3)
+        if r.status_code != 202:
+            print(f"User Profiler did not accept the query ({r.status_code}): {r.text[:200]}")
+    except requests.exceptions.RequestException as e:
+        print("Error while notifying the User Profiler:", e)
