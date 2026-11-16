@@ -1,4 +1,4 @@
-import json, requests, os
+import json, requests, os, logging
 from urllib.parse import urlsplit
 import urllib3
 from pydantic import ValidationError
@@ -18,6 +18,12 @@ SUGGESTIONS_RESPONSE_FORMAT = {
         "schema": LLMQuerySuggestions.model_json_schema() | {"additionalProperties": False},
     },
 }
+
+
+# configure logging to track requests and errors
+logger = logging.getLogger(__name__)
+
+
 
 
 # =========================
@@ -48,7 +54,8 @@ def _ssl_verify_setting() -> bool | str:
     if value.lower() in ('false', '0', 'no'):
         # Explicit opt-out: warn once here instead of on every request
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-        print("WARNING: TLS certificate verification for the LLM API is disabled (LLM_SSL_VERIFY=false)")
+        # substituted the print statement with a logger warning
+        logger.warning("TLS certificate verification for the LLM API is disabled (LLM_SSL_VERIFY=false)")
         return False
     if value.lower() in ('true', '1', 'yes', ''):
         return True
@@ -69,7 +76,9 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
     next_queries    <- a list of next queries (strings) based on the current query and context,
                        or None if the LLM could not be reached or replied with invalid output
     """
-    keywords = get_user_keywords(context, token)[:MAX_KEYWORDS]
+    all_keywords = get_user_keywords(context, token)
+    keywords = all_keywords[:MAX_KEYWORDS]
+    logger.info("Keywords used in the prompt: %d of %d %s", len(keywords), len(all_keywords), keywords)
     keywords_str = ', '.join(keywords) if keywords else 'none'
 
     # getting the model among those available
@@ -101,13 +110,17 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
             "response_format": SUGGESTIONS_RESPONSE_FORMAT,
         }
 
+
+    logger.debug("LLM prompt (model=%s): %s", model_available, payload["messages"][1]["content"])
+
     #send POST request to the FastAPI endpoint
     try:
-        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=SSL_VERIFY)
+        response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=SSL_VERIFY, timeout=120)
         if response.status_code == 400:
             # Some backends/models reject response_format: retry relying on the prompt alone
+            logger.warning("LLM rejected response_format (400): retrying without it")
             del payload["response_format"]
-            response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=SSL_VERIFY)
+            response = requests.post(url=LLM_API_URL, headers=HEADERS, data=json.dumps(payload).encode('utf8'), verify=SSL_VERIFY, timeout=120)
         response.raise_for_status()
 
         #TODO should check if new recommendations are not in query log, to avoid loops
@@ -116,7 +129,7 @@ def generate_next_queries(current_query: str, context: dict, model_choice: str =
         content = response.json()['choices'][0]['message']['content']
 
     except requests.exceptions.RequestException as e:
-        print("Error while calling API:", e)
+        logger.error("LLM call failed (model=%s): %s", model_available, e)
         return None
 
     return parse_suggestions(content, current_query)
@@ -132,13 +145,13 @@ def parse_suggestions(content: str, current_query: str) -> list[str] | None:
     # Tolerate replies wrapped in ```json fences or surrounded by extra text
     start, end = content.find('{'), content.rfind('}')
     if start == -1 or end == -1:
-        print("LLM reply contains no JSON object:", content)
+        logger.warning("LLM reply contains no JSON object: %s", content[:300])
         return None
 
     try:
         suggestions = LLMQuerySuggestions.model_validate_json(content[start:end + 1])
     except ValidationError as e:
-        print("LLM reply does not match the expected schema:", e)
+        logger.warning("LLM reply does not match the expected schema: %s", e)
         return None
 
     seen = {current_query.strip().lower()}
@@ -151,12 +164,15 @@ def parse_suggestions(content: str, current_query: str) -> list[str] | None:
     return queries[:MAX_SUGGESTIONS]
     
 
-def generate_user_description(context: dict, model_choice: str = "glm-5.3-flash") -> str:
-    keywords = get_user_keywords(context)
+def generate_user_description(context: dict, model_choice: str = "glm-5.3-flash", token: str | None = None) -> str:
+    all_keywords = get_user_keywords(context, token)
+    keywords = all_keywords[:MAX_KEYWORDS]
+    logger.info("Keywords used in the prompt: %d of %d %s", len(keywords), len(all_keywords), keywords)
     keywords_str = ', '.join(keywords) if keywords else 'none'
 
     # getting the model among those available
     model_available = get_available_models(model_choice)
+
 
     payload = {
             "model": model_available,
@@ -176,6 +192,8 @@ def generate_user_description(context: dict, model_choice: str = "glm-5.3-flash"
             ]
         }
 
+    logger.debug("LLM prompt (model=%s): %s", model_available, payload["messages"][1]["content"])
+    
     json_data = json.dumps(payload).encode('utf8')
     #print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
     # Send POST request to the FastAPI endpoint
@@ -185,7 +203,7 @@ def generate_user_description(context: dict, model_choice: str = "glm-5.3-flash"
         res = response.json()['choices'][0]['message']['content']
         return res
     except requests.exceptions.RequestException as e:
-        print("Error while calling API:", e)
+        logger.error("LLM call failed (model=%s): %s", model_available, e)
         return None
 
 
@@ -207,6 +225,9 @@ def get_available_models(model_choice) -> str:
     parts = urlsplit(LLM_API_URL)
     url = f"{parts.scheme}://{parts.netloc}/api/models"
 
+    if model_available != model_choice:
+        logger.warning("Model %s not available, using %s", model_choice, model_available)
+
     try:
         response = requests.get(
         url,
@@ -222,5 +243,5 @@ def get_available_models(model_choice) -> str:
     
         
     except requests.exceptions.RequestException as e:
-        print(f"Could not reach models endpoint: {e}")
+        logger.warning("Could not reach models endpoint: %s", e)
         return model_choice
