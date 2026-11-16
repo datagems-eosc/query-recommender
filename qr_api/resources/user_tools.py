@@ -64,7 +64,10 @@ def notify_query(user_id: str | None, query: str, token: str | None) -> None:
     try:
         r = requests.post(f"{USER_PROFILER_API_URL}/user/{user_id}/queries", json={"query": query},
                           headers={"Authorization": f"Bearer {token}"}, timeout=3)
-        if r.status_code != 202:
-            print(f"User Profiler did not accept the query ({r.status_code}): {r.text[:200]}")
+        if r.status_code == 202:
+            logger.info("Query notified to the User Profiler for %s", user_id)
+        else:
+            logger.warning("User Profiler did not accept the query for %s (%s): %s",
+                           user_id, r.status_code, r.text[:200])
     except requests.exceptions.RequestException as e:
-        print("Error while notifying the User Profiler:", e)
+        logger.warning("Could not notify the User Profiler for %s: %s", user_id, e)

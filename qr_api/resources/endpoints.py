@@ -19,9 +19,9 @@ def recommend_next_queries(
     token_payload: dict[str, Any] = Depends(security.require_app_scope),
 ):
     context = request.context if isinstance(request.context, dict) else {}
-    logger.info("Recommendation request: user=%s query=%r", context.get("user_id"), request.current_query[:80])
     # The sub is the ID the DMM logs the queries under, and the one UP accepts for creating new users
     user_id = token_payload.get("sub") or context.get("user_id")
+    logger.info("Recommendation request: user=%s query=%r", user_id, request.current_query[:80])
 
     # 1. Start the keyword refresh on UP (used from the next query on)
     notify_query(user_id, request.current_query, token)

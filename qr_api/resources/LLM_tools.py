@@ -225,8 +225,6 @@ def get_available_models(model_choice) -> str:
     parts = urlsplit(LLM_API_URL)
     url = f"{parts.scheme}://{parts.netloc}/api/models"
 
-    if model_available != model_choice:
-        logger.warning("Model %s not available, using %s", model_choice, model_available)
 
     try:
         response = requests.get(
@@ -239,6 +237,8 @@ def get_available_models(model_choice) -> str:
         data = response.json()
         models = [model["id"] for model in data["data"]]
         model_available = model_choice if model_choice in models else (models[0] if models else model_choice)
+        if model_available != model_choice:
+                logger.warning("Model %s not available, using %s", model_choice, model_available)
         return model_available
     
         
