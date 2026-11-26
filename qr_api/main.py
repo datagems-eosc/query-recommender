@@ -1,9 +1,21 @@
-import os
+import os, logging
+
+#----------------------------------------------------------------
+# configure logging to track requests and errors
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.getLogger("qr_api").setLevel(os.getenv("LOG_LEVEL", "INFO").upper())
+#----------------------------------------------------------------
+
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from qr_api.resources.endpoints import router
 from qr_api.resources.security import router as security_router
 import uvicorn
+
+
+
+
 
 app = FastAPI(
     title="Query Recommender API",
