@@ -41,7 +41,7 @@ The service listens on port `5000`, both in the Docker image and when started wi
 
 ## Model
 
-The preferred model is `llama-3.3`. At each request the service checks it against the models listed by the LLM endpoint, and falls back to the first available model if it is not offered. The preferred model is currently set in code, not through configuration.
+The preferred model is `glm-5.3-flash`, chosen because it answers in about 2 seconds. At each request the service checks it against the models listed by the LLM endpoint, and falls back to the first available model if it is not offered. The preferred model is currently set in code, not through configuration.
 
 ## Example
 

@@ -63,7 +63,7 @@ def _ssl_verify_setting() -> bool | str:
 
 SSL_VERIFY = _ssl_verify_setting()
 
-def generate_next_queries(current_query: str, context: dict, model_choice: str = "llama-3.3", token: str | None = None) -> list[str]:
+def generate_next_queries(current_query: str, context: dict, model_choice: str = "glm-5.3-flash", token: str | None = None) -> list[str]:
     """
     Inputs:
     current_query   <- a string that contains the current NL query submitted by the user

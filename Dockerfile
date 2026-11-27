@@ -21,4 +21,4 @@ COPY qr_api /app/qr_api
 # Sync the project (without the dev group, e.g. Streamlit)
 RUN uv sync --frozen --no-dev
 
-CMD ["uv", "run", "uvicorn", "qr_api.main:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["uv", "run", "--frozen", "--no-dev", "uvicorn", "qr_api.main:app", "--host", "0.0.0.0", "--port", "5000"]
